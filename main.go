@@ -18,14 +18,21 @@ type Server struct {
 }
 
 func (s *Server) AppendMessage(ctx context.Context, req *pb.AppendRequest) (*pb.Empty, error) {
-	s.logger.Infoln("appending a message")
-	message := data.NewMessage(req.Body)
+	message := data.NewMessage(req.Data)
 	s.messageService.AppendMessage(&message)
-
 	return &pb.Empty{}, nil
 }
 
-func (s *Server) SubscribeToMessages(*pb.SubscriptionRequest, pb.MessageService_SubscribeToMessagesServer) error {
+func (s *Server) SubscribeToMessages(req *pb.SubscriptionRequest, cb pb.MessageService_SubscribeToMessagesServer) error {
+	messages, _ := s.messageService.GetAllMessages()
+	for _, msg := range messages {
+		cb.Send(&pb.SubscriptionStream{
+			Crc:       int32(msg.Crc),
+			Version:   int32(msg.Version),
+			Timestamp: msg.Timestamp,
+			Data:      msg.Data,
+		})
+	}
 	return nil
 }
 
