@@ -7,20 +7,25 @@ import (
 	"github.com/redsuperbat/nano-flow/data"
 	"github.com/redsuperbat/nano-flow/logging"
 	pb "github.com/redsuperbat/nano-flow/rpc/messages"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
 
-type server struct {
+type Server struct {
 	pb.UnimplementedMessageServiceServer
+	messageService *data.MessageService
+	logger         *zap.SugaredLogger
 }
 
-func (s *server) AppendMessage(ctx context.Context, req *pb.AppendRequest) (*pb.AppendResponse, error) {
-	return &pb.AppendResponse{
-		Id: "",
-	}, nil
+func (s *Server) AppendMessage(ctx context.Context, req *pb.AppendRequest) (*pb.Empty, error) {
+	s.logger.Infoln("appending a message")
+	message := data.NewMessage(req.Body)
+	s.messageService.AppendMessage(&message)
+
+	return &pb.Empty{}, nil
 }
 
-func (s *server) SubscribeToMessages(*pb.SubscriptionRequest, pb.MessageService_SubscribeToMessagesServer) error {
+func (s *Server) SubscribeToMessages(*pb.SubscriptionRequest, pb.MessageService_SubscribeToMessagesServer) error {
 	return nil
 }
 
@@ -32,10 +37,15 @@ func main() {
 	if err != nil {
 		logger.Fatalln(err)
 	}
-	recordService := data.NewMessageService(file)
-	_, err = recordService.GetAllMessages()
+	messageService := data.NewMessageService(file)
+	msgs, err := messageService.GetAllMessages()
+	server := Server{messageService: &messageService, logger: logger}
 	if err != nil {
 		logger.Fatalln(err)
+	}
+
+	for i, msg := range msgs {
+		logger.Infof("%d. len: %d, content: %s", i, msg.ContentLength, msg.Data)
 	}
 
 	lis, err := net.Listen("tcp", ":50051")
@@ -44,7 +54,7 @@ func main() {
 	}
 
 	s := grpc.NewServer()
-	pb.RegisterMessageServiceServer(s, &server{})
+	pb.RegisterMessageServiceServer(s, &server)
 	logger.Infoln("gRPC server is running on port 50051")
 	if err := s.Serve(lis); err != nil {
 		logger.Fatalf("failed to serve: %v", err)

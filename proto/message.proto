@@ -2,17 +2,15 @@ syntax = "proto3";
 package nanoflow;
 option go_package = "rpc/messages";
 
-
 service MessageService {
-  rpc SubscribeToMessages(SubscriptionRequest) returns (stream SubscriptionStream);
-  rpc AppendMessage(AppendRequest) returns (AppendResponse);
+  rpc SubscribeToMessages(SubscriptionRequest)
+      returns (stream SubscriptionStream);
+  rpc AppendMessage(AppendRequest) returns (Empty);
 }
 
 message AppendRequest { bytes body = 1; }
-
-message AppendResponse { string id = 1; }
-
-message SubscriptionRequest {  }
+message Empty {}
+message SubscriptionRequest {}
 
 message SubscriptionStream {
   string id = 1;

@@ -2,12 +2,19 @@ package data
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"os"
+	"time"
 
 	"github.com/redsuperbat/nano-flow/logging"
 	"go.uber.org/zap"
+)
+
+const (
+	HEADER_LENGTH = 18
 )
 
 func Init(filepath string) (*os.File, error) {
@@ -33,9 +40,71 @@ func Init(filepath string) (*os.File, error) {
 }
 
 type Message struct {
-	Len     uint32
-	Data    []byte
-	Version uint8
+	// Header
+	Version       uint16
+	ContentLength uint32
+	Timestamp     int64
+	Crc           uint32
+	// Body
+	Data []byte
+}
+
+func (m *Message) marshal() []byte {
+	version := make([]byte, 2)
+	binary.BigEndian.PutUint16(version, m.Version)
+	cl := make([]byte, 4)
+	binary.BigEndian.PutUint32(cl, m.ContentLength)
+	timestamp := make([]byte, 8)
+	binary.BigEndian.PutUint64(timestamp, uint64(m.Timestamp))
+	crc := make([]byte, 4)
+	binary.BigEndian.PutUint32(crc, m.Crc)
+	x := append(version, cl...)
+	x = append(x, timestamp...)
+	x = append(x, crc...)
+	x = append(x, m.Data...)
+	return x
+}
+
+func NewMessage(data []byte) Message {
+	var v uint16 = 0
+	version := make([]byte, 2)
+	binary.BigEndian.PutUint16(version, v)
+	contentLength := uint32(len(data))
+
+	ts := time.Now().UTC().UnixNano()
+	timestamp := make([]byte, 8)
+	binary.BigEndian.PutUint64(timestamp, uint64(ts))
+	cl := make([]byte, 4)
+	binary.BigEndian.PutUint32(cl, contentLength)
+	bytes := append([]byte{}, version...)
+	bytes = append(bytes, cl...)
+	bytes = append(bytes, timestamp...)
+	bytes = append(bytes, data...)
+
+	crc32Hash := crc32.NewIEEE()
+	crc32Hash.Write(bytes)
+	crc := crc32Hash.Sum32()
+
+	return Message{
+		Version:       v,
+		ContentLength: contentLength,
+		Timestamp:     ts,
+		Crc:           crc,
+		Data:          data,
+	}
+}
+
+func ParseMessage(content []byte) (Message, error) {
+	var msg Message
+	msg.Version = binary.BigEndian.Uint16(content[0:2])
+	msg.ContentLength = binary.BigEndian.Uint32(content[2:6])
+	if len(content) != HEADER_LENGTH+int(msg.ContentLength) {
+		return msg, errors.New("invalid message content")
+	}
+	msg.Timestamp = int64(binary.BigEndian.Uint64(content[6:14]))
+	msg.Crc = binary.BigEndian.Uint32(content[14:HEADER_LENGTH])
+	msg.Data = content[HEADER_LENGTH:(HEADER_LENGTH + int(msg.ContentLength))]
+	return msg, nil
 }
 
 func NewMessageService(file *os.File) MessageService {
@@ -51,47 +120,45 @@ type MessageService struct {
 	logger         *zap.SugaredLogger
 }
 
-func (ms *MessageService) AppendMessage(data []byte) error {
-	l := uint32(len(data))
+func (ms *MessageService) AppendMessage(message *Message) (*Message, error) {
 	fh := ms.DatabaseHandle
 	_, err := fh.Seek(0, os.SEEK_END)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	buf := make([]byte, 4)
-	binary.LittleEndian.PutUint32(buf, l)
-	_, err = fh.Write(append(buf, data...))
+	data := message.marshal()
+	_, err = fh.Write(data)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	return nil
+	return message, nil
 }
 
 func (ms *MessageService) GetAllMessages() ([]Message, error) {
+	ms.DatabaseHandle.Seek(0, 0)
 	buf, err := io.ReadAll(ms.DatabaseHandle)
 	if err != nil {
 		return nil, err
 	}
-
-	len := binary.LittleEndian.Uint32(buf[:4])
-	ms.logger.Infof("len %d", len)
-	return []Message{}, nil
-
-}
-
-func (ms *MessageService) PrintAllMessages() {
-
-	ms.DatabaseHandle.Seek(0, 0)
-	bufferSize := 1024
-	buffer := make([]byte, bufferSize)
-
+	messages := []Message{}
+	i := 0
 	for {
-		n, err := ms.DatabaseHandle.Read(buffer)
-		if err != nil {
-			ms.logger.Infoln(err)
+		if i >= len(buf) {
 			break
 		}
-		ms.logger.Infoln(string(buffer[:n]))
+		startIndex := i + 2
+		endIndex := i + 6
+		clBuf := buf[startIndex:endIndex]
+		contentLength := binary.BigEndian.Uint32(clBuf)
+		endIndex = i + int(contentLength) + HEADER_LENGTH
+		messageData := buf[i:endIndex]
+		i = endIndex
+		message, err := ParseMessage(messageData)
+		if err != nil {
+			ms.logger.Panicln("corrupted message data")
+		}
+		messages = append(messages, message)
 	}
+	return messages, nil
+
 }
