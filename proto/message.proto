@@ -3,20 +3,17 @@ package nanoflow;
 option go_package = "rpc/messages";
 
 service MessageService {
-  rpc SubscribeToMessages(SubscriptionRequest)
-      returns (stream SubscriptionStream);
+  rpc SubscribeToMessages(SubscriptionRequest) returns (stream NanoMessage);
   rpc AppendMessage(AppendRequest) returns (Empty);
 }
 
 message AppendRequest { bytes data = 1; }
 message Empty {}
-message SubscriptionRequest {
-  string group_id = 1;
-}
+message SubscriptionRequest { string group_id = 1; }
 
-message SubscriptionStream {
-  int32 crc = 1;
+message NanoMessage {
+  uint32 crc = 1;
   int64 timestamp = 2;
-  int32 version = 3;
+  uint32 version = 3;
   bytes data = 4;
 }

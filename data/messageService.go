@@ -86,7 +86,3 @@ func (ms *MessageService) GetAllMessages() ([]Message, error) {
 	}
 	return messages, nil
 }
-
-func (s *MessageService) Subscribe(func(*Message)) {
-
-}

@@ -26,31 +26,39 @@ func (s *Server) AppendMessage(ctx context.Context, req *pb.AppendRequest) (*pb.
 	return &pb.Empty{}, nil
 }
 
+func getMessageChannelFromGroupId(groupId string, listeners map[string]data.MessageChannel) data.MessageChannel {
+	if value, found := listeners[groupId]; found {
+		return value
+	} else {
+		listeners[groupId] = make(data.MessageChannel)
+		return listeners[groupId]
+	}
+}
+
 func (s *Server) SubscribeToMessages(req *pb.SubscriptionRequest, cb pb.MessageService_SubscribeToMessagesServer) error {
 	messages, _ := s.messageService.GetAllMessages()
 	for _, msg := range messages {
-		stream := pb.SubscriptionStream{
-			Crc:       int32(msg.Crc),
-			Version:   int32(msg.Version),
+		nMsg := pb.NanoMessage{
+			Crc:       msg.Crc,
+			Version:   uint32(msg.Version),
 			Data:      msg.Data,
 			Timestamp: msg.Timestamp,
 		}
-		err := cb.Send(&stream)
+		err := cb.Send(&nMsg)
 		if err != nil {
 			return err
 		}
 	}
 
 	// Add listener to the server
-	msgChan := make(data.MessageChannel)
-	s.listeners[req.GroupId] = msgChan
+	msgChan := getMessageChannelFromGroupId(req.GroupId, s.listeners)
 
 	// Subscribe to messages
 	for msg := range msgChan {
-		cb.Send(&pb.SubscriptionStream{
-			Crc:       int32(msg.Crc),
+		cb.Send(&pb.NanoMessage{
+			Crc:       msg.Crc,
 			Timestamp: msg.Timestamp,
-			Version:   int32(msg.Version),
+			Version:   uint32(msg.Version),
 			Data:      msg.Data,
 		})
 	}
