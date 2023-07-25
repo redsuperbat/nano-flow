@@ -6,11 +6,12 @@ import (
 	"io"
 	"os"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/redsuperbat/nano-flow/logging"
 	"go.uber.org/zap"
 )
 
-func Init(filepath string) (*os.File, error) {
+func InitDatabase(filepath string) (*os.File, error) {
 	_, err := os.Stat(filepath)
 	logger := logging.New()
 	if os.IsNotExist(err) {
@@ -21,9 +22,9 @@ func Init(filepath string) (*os.File, error) {
 		logger.Infof("database '%s' created successfully", filepath)
 		return file, nil
 	} else if err != nil {
-		return nil, fmt.Errorf("error checking file existence: %s", err)
+		return nil, fmt.Errorf("error checking database existence: %s", err)
 	} else {
-		logger.Infof("database file '%s' already exists", filepath)
+		logger.Infof("database '%s' already exists", filepath)
 	}
 	file, err := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
@@ -32,9 +33,44 @@ func Init(filepath string) (*os.File, error) {
 	return file, nil
 }
 
-func NewMessageService(file *os.File) MessageService {
+type DbChannel = chan uint8
+
+func InitWatcher(filepath string) (DbChannel, error) {
 	logger := logging.New()
-	return MessageService{
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return nil, err
+	}
+	channel := make(DbChannel)
+	go func() {
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
+				if event.Has(fsnotify.Write) {
+					channel <- 0
+				}
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				logger.Errorln(err)
+			}
+		}
+	}()
+
+	err = watcher.Add(filepath)
+	if err != nil {
+		return nil, err
+	}
+	return channel, nil
+}
+
+func NewMessageService(file *os.File) *MessageService {
+	logger := logging.New()
+	return &MessageService{
 		DatabaseHandle: file,
 		logger:         logger,
 	}
@@ -85,5 +121,8 @@ func (ms *MessageService) GetAllMessages() ([]Message, error) {
 		messages = append(messages, message)
 	}
 	return messages, nil
+}
+
+func (s *MessageService) Subscribe(func(*Message)) {
 
 }

@@ -11,6 +11,8 @@ const (
 	HEADER_LENGTH = 18
 )
 
+type MessageChannel = chan *Message
+
 type Message struct {
 	// Header
 	Version       uint16

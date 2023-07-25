@@ -21,7 +21,7 @@ func teardown() {
 }
 
 func TestCreateData(t *testing.T) {
-	file, _ := Init("test.db")
+	file, _ := InitDatabase("test.db")
 	service := NewMessageService(file)
 	msg1 := NewMessage([]byte("Hi there my old friend!"))
 	msg2 := NewMessage([]byte("You're a wizard harry!"))
