@@ -7,9 +7,7 @@ RUN go mod download
 
 # Install protobuf cli
 RUN apt-get update
-RUN apt install -y protobuf-compiler
-RUN apt install -y protoc-gen-go
-RUN apt install -y protoc-gen-go-grpc
+RUN apt install -y protobuf-compiler protoc-gen-go-grpc protoc-gen-go
 
 # Build binary
 COPY . .
