@@ -10,7 +10,9 @@ service MessageService {
 
 message AppendRequest { bytes data = 1; }
 message Empty {}
-message SubscriptionRequest {}
+message SubscriptionRequest {
+  string group_id = 1;
+}
 
 message SubscriptionStream {
   int32 crc = 1;

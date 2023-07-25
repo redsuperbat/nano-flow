@@ -6,6 +6,7 @@ import (
 	"github.com/redsuperbat/nano-flow/data"
 	"github.com/redsuperbat/nano-flow/logging"
 	"github.com/redsuperbat/nano-flow/server"
+	"google.golang.org/grpc"
 )
 
 const filepath = "messages.db"
@@ -16,7 +17,6 @@ func main() {
 	if err != nil {
 		logger.Fatalln(err)
 	}
-	_, err = data.InitWatcher(filepath)
 	if err != nil {
 		logger.Fatalln(err)
 	}
@@ -30,7 +30,8 @@ func main() {
 		logger.Fatalf("failed to listen: %v", err)
 	}
 	logger.Infoln("server is running on port 50051 ready to accept connections")
-	if err = server.Start(lis); err != nil {
+	grpcServer := grpc.NewServer()
+	if err = server.Start(lis, grpcServer); err != nil {
 		logger.Fatalf("failed to start server %s", err)
 	}
 }

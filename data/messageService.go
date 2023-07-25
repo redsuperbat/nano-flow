@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/fsnotify/fsnotify"
 	"github.com/redsuperbat/nano-flow/logging"
 	"go.uber.org/zap"
 )
@@ -31,41 +30,6 @@ func InitDatabase(filepath string) (*os.File, error) {
 		return nil, err
 	}
 	return file, nil
-}
-
-type DbChannel = chan uint8
-
-func InitWatcher(filepath string) (DbChannel, error) {
-	logger := logging.New()
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		return nil, err
-	}
-	channel := make(DbChannel)
-	go func() {
-		for {
-			select {
-			case event, ok := <-watcher.Events:
-				if !ok {
-					return
-				}
-				if event.Has(fsnotify.Write) {
-					channel <- 0
-				}
-			case err, ok := <-watcher.Errors:
-				if !ok {
-					return
-				}
-				logger.Errorln(err)
-			}
-		}
-	}()
-
-	err = watcher.Add(filepath)
-	if err != nil {
-		return nil, err
-	}
-	return channel, nil
 }
 
 func NewMessageService(file *os.File) *MessageService {
