@@ -6,7 +6,7 @@ terraform {
   }
   backend "kubernetes" {
     namespace     = "terraform-backend"
-    secret_suffix = "rsb-config"
+    secret_suffix = "nano-flow"
     config_path   = "~/.kube/config"
   }
 }
