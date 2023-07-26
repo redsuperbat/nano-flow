@@ -36,6 +36,7 @@ resource "kubernetes_persistent_volume_claim_v1" "pvc" {
     name      = local.name
     namespace = local.namespace
   }
+  wait_until_bound = false
   spec {
     access_modes = ["ReadWriteOnce"]
     resources {
@@ -80,6 +81,8 @@ resource "kubernetes_deployment_v1" "deploy" {
     name      = local.name
     namespace = local.namespace
   }
+
+  wait_for_rollout = false
 
   spec {
     replicas = 1
