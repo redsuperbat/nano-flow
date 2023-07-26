@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"fmt"
 	"os"
 
 	"go.uber.org/zap"
@@ -24,13 +25,20 @@ func New() *zap.SugaredLogger {
 	format := getFormat()
 
 	if format == LOG_FORMAT_JSON {
-		logger, _ := zap.NewProduction()
+		logger, err := zap.NewProduction()
+		if err != nil {
+			panic(err)
+		}
 		return logger.Sugar()
 	}
 	if format == LOG_FORMAT_PLAIN {
-		logger, _ := zap.NewDevelopment()
+		logger, err := zap.NewDevelopment()
+		if err != nil {
+			panic(err)
+		}
 		return logger.Sugar()
 	}
 
-	panic("invalid log format 'NANO_LOG_FORMAT'")
+	errMsg := fmt.Sprintf("invalid log format 'NANO_LOG_FORMAT' expected '%s'|'%s' got %s", LOG_FORMAT_PLAIN, LOG_FORMAT_JSON, format)
+	panic(errMsg)
 }

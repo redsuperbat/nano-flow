@@ -2,6 +2,7 @@ package main
 
 import (
 	"net"
+	"os"
 
 	"github.com/redsuperbat/nano-flow/data"
 	"github.com/redsuperbat/nano-flow/logging"
@@ -10,9 +11,17 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-const filepath = "messages.db"
+func getDbPath() string {
+	const filepath = "nano-flow.db"
+	path, found := os.LookupEnv("NANO_DATABASE_PATH")
+	if !found {
+		return filepath
+	}
+	return path
+}
 
 func main() {
+	filepath := getDbPath()
 	logger := logging.New()
 	file, err := data.InitDatabase(filepath)
 	if err != nil {
