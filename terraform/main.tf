@@ -75,36 +75,6 @@ resource "kubernetes_secret_v1" "env" {
   }
 }
 
-resource "kubernetes_ingress_v1" "ing" {
-
-  metadata {
-    name      = local.name
-    namespace = local.namespace
-  }
-
-
-  spec {
-    dynamic "rule" {
-      for_each = toset(local.hosts)
-      content {
-        host = rule.value
-        http {
-          path {
-            backend {
-              service {
-                port {
-                  number = kubernetes_service_v1.service.spec[0].port[0].port
-                }
-                name = kubernetes_service_v1.service.metadata[0].name
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
-
 resource "kubernetes_deployment_v1" "deploy" {
   metadata {
     name      = local.name
