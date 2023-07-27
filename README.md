@@ -1,5 +1,7 @@
 # Nano Flow
 
+Tiny append only database used for event driven applications. Uses Grpc to produce messages and subscribe to messages via ephemeral consumer groups.
+
 ## Storage Protocol
 
 2 bytes
