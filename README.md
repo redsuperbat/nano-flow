@@ -2,7 +2,11 @@
 
 Tiny append only database used for event driven applications. Uses Grpc to produce messages and subscribe to messages via ephemeral consumer groups.
 
-## Storage Protocol
+
+
+## Message Storage Protocol
+
+![nano-flow-file-protocol](https://github.com/redsuperbat/nano-flow/assets/44667637/a9d9b4f0-e357-4442-992a-8218aa7b6e3e)
 
 2 bytes
 
