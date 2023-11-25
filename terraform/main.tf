@@ -12,7 +12,7 @@ terraform {
 }
 
 locals {
-  namespace = "nano-flow"
+  namespace = "rsb-apps"
   name      = "nano-flow"
 }
 
@@ -22,13 +22,6 @@ variable "image_tag" {
 
 provider "kubernetes" {
   config_path = "~/.kube/config"
-}
-
-
-resource "kubernetes_namespace_v1" "ns" {
-  metadata {
-    name = local.namespace
-  }
 }
 
 resource "kubernetes_persistent_volume_claim_v1" "pvc" {
