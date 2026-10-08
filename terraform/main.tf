@@ -6,6 +6,7 @@ terraform {
   }
   backend "kubernetes" {
     namespace     = "terraform-backend"
+    insecure      = true
     secret_suffix = "nano-flow"
     config_path   = "~/.kube/config"
   }
